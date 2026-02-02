@@ -4,6 +4,7 @@ import Product from "@/pages/Product";
 import Products from "@/pages/Products";
 import Cart from "@/pages/Cart";
 import NotFound from "@/pages/NotFound";
+import Login from "@/pages/Login";
 
 const routes = [
     {
@@ -13,6 +14,10 @@ const routes = [
             {
                 path: "/",
                 element: <Home />,
+            },
+            {
+                path: "/Login",
+                element: <Login />,
             },
             {
                 path: "/Cart",

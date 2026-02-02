@@ -10,3 +10,11 @@ export const thousandNum = (n) => {
         minimumFractionDigits: 0,
     });
 };
+
+export const sleeping = (ms) => {
+    return new Promise((res) => {
+        setTimeout(() => {
+            res('sleeping for ' + ms);
+        }, ms);
+    });
+};

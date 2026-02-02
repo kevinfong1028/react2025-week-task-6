@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import * as Utils from "../utils";
 import { useForm } from "react-hook-form";
+import { ThreeDots } from "react-loader-spinner";
 
 // const VITE_BASEURL = import.meta.env.VITE_BASEURL;
 // const VITE_PATH = import.meta.env.VITE_PATH;
@@ -55,7 +56,7 @@ function Cart() {
         (async () => {
             const url = `${VITE_BASEURL}/api/${VITE_PATH}/products`;
             const resp = await axios.get(url);
-            console.log('List', resp)
+            // console.log("List", resp);
             setProducts(resp.data.products);
         })();
     }, []);
@@ -72,7 +73,7 @@ function Cart() {
         const url = `${VITE_BASEURL}/api/${VITE_PATH}/cart`;
         try {
             const res = await axios.get(url);
-            console.log(res.data);
+            // console.log(res.data);
             if (res.data.success) {
                 let modify = {
                     ...res.data.data,
@@ -82,12 +83,6 @@ function Cart() {
                     })),
                 };
                 setCartData(modify);
-                // setProducts(
-                //     res.data.data.carts.map((item) => ({
-                //         ...item,
-                //         isDisabled: true,
-                //     })),
-                // );
             }
         } catch (error) {
             console.log(error);
@@ -125,8 +120,11 @@ function Cart() {
         }));
     };
 
+    const [isProductAddingId, setIsProductAddingId] = useState(null);
     const addCart = async (id) => {
         setIsFreezed(true);
+        setIsProductAddingId(id);
+        await Utils.sleeping(1000);
         const url = `${VITE_BASEURL}/api/${VITE_PATH}/cart/`;
         const req = {
             data: {
@@ -147,6 +145,7 @@ function Cart() {
             console.log(error);
         } finally {
             setIsFreezed(false);
+            setIsProductAddingId(null);
         }
     };
 
@@ -183,10 +182,10 @@ function Cart() {
         }
     };
 
-    const [isEmptyBtnDisabled, setIsEmptyBtnDisabled] = useState(false);
+    const [isCartEmpty, setIsCartEmpty] = useState(true);
     useEffect(
         (e) => {
-            setIsEmptyBtnDisabled(cartData.carts?.length === 0 ? true : false);
+            setIsCartEmpty(cartData.carts?.length === 0 ? true : false);
         },
         [cartData.carts?.length],
     );
@@ -194,8 +193,8 @@ function Cart() {
     const emptyCart = async () => {
         const yes = confirm(`確定清空購物車嗎?`);
         if (!yes) return;
-
         const url = `${VITE_BASEURL}/api/${VITE_PATH}/carts`;
+        if (isCartEmpty) return;
         try {
             // return;
             const res = await axios.delete(url);
@@ -210,7 +209,8 @@ function Cart() {
     const {
         register,
         handleSubmit,
-        formState: { errors },
+        formState: { errors, isValid },
+        reset
     } = useForm({
         defaultValues: {
             inputName: "",
@@ -218,12 +218,12 @@ function Cart() {
             inputTel: "",
             inputAddr: "",
             inputComment: "",
-            agree: true,
+            agree: false,
         },
         mode: "onChange",
     });
 
-    console.log(errors);
+    // console.log(errors);
 
     const mySubmit = async (inputData) => {
         const req = {
@@ -237,18 +237,23 @@ function Cart() {
                 message: inputData.inputComment,
             },
         };
-        console.log("mySubmit", req);
+        // console.log("mySubmit", req);
         try {
             const url = `${VITE_BASEURL}/api/${VITE_PATH}/order`;
-            const res = await axios.post(url, req)
-            console.log('order post', res)
+            const res = await axios.post(url, req);
+            // console.log("order post", res);
 
-            if(res.data.success){
-
+            if (res.data.success) {
+                loadCart();
+                alert("已成功建立訂單");
+                reset();
+            } else {
+                alert("訂單建立未果" + res.data.message);
             }
-
         } catch (error) {
-            console.log('XXX', error)
+            console.log(error);
+        }finally{
+
         }
     };
 
@@ -296,7 +301,9 @@ function Cart() {
                                                     type="button"
                                                     className="btn btn-outline-secondary"
                                                     onClick={() =>
-                                                        navigate(`/product/${p.id}`)
+                                                        navigate(
+                                                            `/product/${p.id}`,
+                                                        )
                                                     }
                                                 >
                                                     看詳細
@@ -307,7 +314,24 @@ function Cart() {
                                                     onClick={() =>
                                                         addCart(p.id)
                                                     }
+                                                    disabled={
+                                                        isProductAddingId ===
+                                                        p.id
+                                                    }
                                                 >
+                                                    {isProductAddingId ===
+                                                    p.id ? (
+                                                        <ThreeDots
+                                                            visible={true}
+                                                            height="16"
+                                                            width="24"
+                                                            color="gray"
+                                                            radius="9"
+                                                            ariaLabel="three-dots-loading"
+                                                        />
+                                                    ) : (
+                                                        ""
+                                                    )}{" "}
                                                     加入訂單
                                                 </button>
                                             </div>
@@ -326,7 +350,7 @@ function Cart() {
                                 type="button"
                                 className="btn btn-danger"
                                 onClick={emptyCart}
-                                disabled={isEmptyBtnDisabled}
+                                disabled={isCartEmpty}
                             >
                                 清空購物車
                             </button>
@@ -447,6 +471,10 @@ function Cart() {
                                     className="form-control"
                                     {...register("inputEmail", {
                                         required: "請填寫email",
+                                        pattern: {
+                                            value: /^\S+@\S+$/i,
+                                            message: "email格式有誤",
+                                        },
                                     })}
                                     placeholder="example@mail.com"
                                 />
@@ -526,7 +554,18 @@ function Cart() {
                                     {errors.agree?.message}
                                 </p>
                             </div>
-                            <button type="submit" className="btn btn-primary">
+                            {isValid && isCartEmpty ? (
+                                <p className="text-danger">
+                                    您的購物車沒有物品
+                                </p>
+                            ) : (
+                                ""
+                            )}
+                            <button
+                                type="submit"
+                                className="btn btn-primary"
+                                disabled={!isValid || isCartEmpty}
+                            >
                                 Submit
                             </button>
                         </form>
