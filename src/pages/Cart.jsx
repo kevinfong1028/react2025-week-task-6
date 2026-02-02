@@ -73,19 +73,22 @@ function Cart() {
         const url = `${VITE_BASEURL}/api/${VITE_PATH}/cart`;
         try {
             const res = await axios.get(url);
-            // console.log(res.data);
+            console.log(res.data);
             if (res.data.success) {
-                let modify = {
-                    ...res.data.data,
-                    carts: res.data.data.carts.map((item) => ({
-                        ...item,
-                        isDisabled: false,
-                    })),
-                };
-                setCartData(modify);
+                setCartData(res.data.data);
+                // let modify = {
+                //     ...res.data.data,
+                //     carts: res.data.data.carts.map((item) => ({
+                //         ...item,
+                //         isDisabled: false,
+                //     })),
+                // };
+                // setCartData(modify);
             }
         } catch (error) {
             console.log(error);
+        } finally {
+            setIsFreezed(false);
         }
     };
 
@@ -94,7 +97,8 @@ function Cart() {
     }, []);
 
     const handleInputChange = (e, index) => {
-        setIsFreezed(false);
+        console.log("change", e.target.value, index, cartData);
+        // return
         // setProducts((prev) =>
         //     prev.map((item, i) =>
         //         i === index
@@ -113,16 +117,20 @@ function Cart() {
                     ? {
                           ...item,
                           qty: e.target.value,
-                          isDisabled: false,
+                          //   isDisabled: false,
                       }
                     : item,
             ),
         }));
+        updateCart(
+            cartData.carts[index].id,
+            cartData.carts[index].product_id,
+            e.target.value,
+        );
     };
 
     const [isProductAddingId, setIsProductAddingId] = useState(null);
     const addCart = async (id) => {
-        setIsFreezed(true);
         setIsProductAddingId(id);
         await Utils.sleeping(1000);
         const url = `${VITE_BASEURL}/api/${VITE_PATH}/cart/`;
@@ -144,12 +152,12 @@ function Cart() {
         } catch (error) {
             console.log(error);
         } finally {
-            setIsFreezed(false);
             setIsProductAddingId(null);
         }
     };
 
     const updateCart = async (cId, pId, q = 1) => {
+        setIsFreezed(true);
         const req = {
             data: {
                 product_id: pId,
@@ -159,11 +167,14 @@ function Cart() {
         const url = `${VITE_BASEURL}/api/${VITE_PATH}/cart/${cId}`;
         try {
             const res = await axios.put(url, req);
+            console.log("updated", res);
             if (res.data.success) {
                 loadCart();
             }
         } catch (error) {
             console.log(error);
+        } finally {
+            setIsFreezed(false);
         }
     };
 
@@ -210,7 +221,7 @@ function Cart() {
         register,
         handleSubmit,
         formState: { errors, isValid },
-        reset
+        reset,
     } = useForm({
         defaultValues: {
             inputName: "",
@@ -252,8 +263,7 @@ function Cart() {
             }
         } catch (error) {
             console.log(error);
-        }finally{
-
+        } finally {
         }
     };
 
@@ -392,6 +402,7 @@ function Cart() {
                                                                 index,
                                                             )
                                                         }
+                                                        disabled={isFreezed}
                                                     />
                                                     <span className="input-group-text">
                                                         {p.product.unit}
